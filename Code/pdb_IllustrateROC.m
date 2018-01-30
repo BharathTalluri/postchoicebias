@@ -1,4 +1,4 @@
-function figS2_IllustrateROC()
+function pdb_IllustrateROC()
 % Bharath Talluri
 % code accompanying the post-decision bias paper. This reproduces
 % figure S2 of the paper

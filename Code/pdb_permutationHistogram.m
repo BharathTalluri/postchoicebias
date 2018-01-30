@@ -1,4 +1,4 @@
-function figS1_permutationHistogram()
+function pdb_permutationHistogram()
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code reproduces
 % figure S1 of the paper.

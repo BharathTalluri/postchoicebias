@@ -1,4 +1,4 @@
-function ga = fig1_Behaviour(task, isplot)
+function ga = pdb_Behaviour(task, isplot)
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code reproduces
 % figure 1 of the paper.
