@@ -41,7 +41,8 @@ for sj = subjects
         estimations(sj, :) = splitapply(@nanmedian, dat.estim, findgroups(dat.xavg));
     elseif strcmp(task, 'Cognitive')
         % we are only interested in the psychometric function fits for the
-        % cognitive task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228. 
+        % cognitive task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228.
+        choicetrls      = find(abs(data.condition) == 1);
         dat.relativex1 = dat.x1 - 50;
         dat.binchoice(dat.binchoice == 1) = -1;
         dat.binchoice(dat.binchoice == 2) = 1;
