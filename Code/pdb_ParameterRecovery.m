@@ -1,9 +1,9 @@
 function pdb_ParameterRecovery()
 
 % Bharath Talluri & Anne Urai
-% code accompanying the post-decision bias paper. This code outputs a BIC
-% table comparing various models described in the paper for the perceptual
-% data
+% code accompanying the post-decision bias paper. This code reproduces
+% figure S2 showing that the model succesfully recovers parameters from
+% simulated data
 close all;
 clc; dbstop if error;
 % specify the path to the data
@@ -11,9 +11,13 @@ behdatapath = '../Data';
 behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
 % initialise some variables
 subjects = unique(behdata.subj)';
-recovery.actualparams = NaN (length(subjects), 3);
-recovery.recoveredparams = NaN (length(subjects), 3);
+recovery.actualparams = NaN (500, 3);
+recovery.recoveredparams = NaN (500, 3);
+recovery.recoveredNlogL = NaN(500,1);
+% get the noise and bias parameters from psychometric fits
+psycho_fits = pdb_Behaviour('Perceptual', 0);
 rng shuffle;
+global psycho_noise
 for iter = 1:500
     % pick a random subject to simulate
     sj = datasample(subjects,1);
@@ -21,29 +25,35 @@ for iter = 1:500
     % use only choice trials in this paper
     choicetrials = find(subj_dat.condition == 1 & abs(subj_dat.binchoice) == 1);
     subj_dat = subj_dat(choicetrials,:);
+    psycho_noise = psycho_fits.logisticFit(sj, 2);
     % simulate binary choice and estimation behaviour using random
     % parameters
     params2simulate = [datasample(5:5:20,1), datasample(0.05:0.05:1,1) datasample(0.05:0.05:1, 1)];
-    
-    starting_pt = [datasample(1:5:25, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1)];
-    [choicebased.Finalparams(sj,:), choicebased.FinalNlogL(sj), choicebased.BIC(sj)] = fit_choicebasedmodel(subj_dat, starting_pt);
-    [evidencebased.Finalparams(sj,:), evidencebased.FinalNlogL(sj), evidencebased.BIC(sj)] = fit_evidencebasedmodel(subj_dat, starting_pt);
-    [unbiased.Finalparams(sj,:), unbiased.FinalNlogL(sj), unbiased.BIC(sj)] = fit_unbiasedmodel(subj_dat, starting_pt);
-    num_trls(sj) = size(subj_dat,1);
+    est_noise = params2simulate(1);
+    w1 = params2simulate(2);
+    w2 = params2simulate(3);
+    % start simulating estimations and decisions
+    x1 = subj_dat.x1;
+    x2 = subj_dat.x2;
+    % generate a distribution of noisy stimulus representations
+    NoisyX1 = bsxfun(@plus, x1, psycho_noise .* randn(length(x1),1)); % add noise
+    NoisyX2 = bsxfun(@plus, x2, psycho_noise .* randn(length(x2),1)); % add noise
+    Noise_est = est_noise .*randn(length(x1),1);
+    Binchoice = sign(NoisyX1);
+    % get evaluation
+    Evaluation = bsxfun(@times, NoisyX1, w1) ...
+        + bsxfun(@times, NoisyX2, w2) + Noise_est;
+    subj_dat.estim = Evaluation;
+    subj_dat.binchoice = Binchoice;
+    % end of simulated estimations
+    starting_pt = [psycho_noise 0.5 0.5];
+    [recovery.recoveredparams(iter,:), recovery.recoveredNlogL(iter)] = fit_model(subj_dat, starting_pt);
+    recovery.actualparams(iter,:) = params2simulate;
 end
-% get the grand BIC and Negll values across the group
-choicebased.FinalNlogL(length(subjects) + 1) = sum(choicebased.FinalNlogL(1:length(subjects)));
-[~, choicebased.BIC(length(subjects) + 1)] = aicbic(-choicebased.FinalNlogL(length(subjects)+1), 6*length(subjects), sum(num_trls));
-evidencebased.FinalNlogL(length(subjects) + 1) = sum(evidencebased.FinalNlogL(1:length(subjects)));
-[~, evidencebased.BIC(length(subjects) + 1)] = aicbic(-evidencebased.FinalNlogL(length(subjects)+1), 6*length(subjects), sum(num_trls));
-unbiased.FinalNlogL(length(subjects) + 1) = sum(unbiased.FinalNlogL(1:length(subjects)));
-[~, unbiased.BIC(length(subjects) + 1)] = aicbic(-unbiased.FinalNlogL(length(subjects)+1), 3*length(subjects), sum(num_trls));
-
-fprintf('Delta BIC between choice-based and unbiased model = %d \n', choicebased.BIC(length(subjects)+1)-unbiased.BIC(length(subjects)+1));
-fprintf('Delta BIC between choice-based and evidence-based model = %d \n', choicebased.BIC(length(subjects)+1)-evidencebased.BIC(length(subjects)+1));
+plot_params(recovery);
 end
 
-function [subj_params, subj_NlogL, subj_BIC] = fit_unbiasedmodel(subj_dat, starting_pt)
+function [subj_params, subj_NlogL] = fit_model(subj_dat, starting_pt)
 % function evaluation params
 global dat
 options = optimset('Display', 'notify') ;
@@ -53,8 +63,7 @@ options.TolX = 0.00001; % dont make this too small, will take forever to converg
 options.TolFun = 0.00001;
 options.Robust = 'on';
 
-% fit all the trials in the unbiased model
-% define a random starting point for the fitting algorithm
+% fit all the trials in the model
 dat = subj_dat;
 [individualparams, ~]=subplex('pdb_model', starting_pt);
 % optimise again, just to make sure we are at the minimum
@@ -62,7 +71,7 @@ dat = subj_dat;
 end
 
 function optimal_funcval = pdb_model(individualparams)
-global dat;global psycho_noise; global psycho_bias;
+global dat;global psycho_noise; 
 % get the relevant values first
 X1 = dat.x1;
 X2 = dat.x2;
@@ -74,7 +83,7 @@ step = 0.05;
 X = -180:step:180; % the range of values over which we calculate the pdf
 for i = 1:num_trls
     % get the pdf for the first interval
-    Y1cc = normpdf(X, (X1(i))*individualparams(2), psycho_noise*abs(individualparams(2)));
+    Y1cc = normpdf(X, X1(i)*individualparams(2), psycho_noise*abs(individualparams(2)));
     % set the pdf of the unchosen side to zero, assuming subjects base
     % their estimations only on the chosen side
     Y1cc(sign(X) ~= sign(RealDecision(i))) = 0;
@@ -82,7 +91,7 @@ for i = 1:num_trls
     % the area under the curve is 1
     Y1cc = Y1cc./trapz(X,Y1cc);
     % get the pdf of the second interval
-    Y2cc = normpdf(X, (X2(i) + psycho_bias)*individualparams(3), psycho_noise*abs(individualparams(3)));
+    Y2cc = normpdf(X, X2(i)*individualparams(3), psycho_noise*abs(individualparams(3)));
     % convolve the two pdfs corresponding to the two inervals respectively-
     % this is similar to adding two random variables drawn from the
     % distributions
@@ -114,4 +123,88 @@ if isnan(PlogObservation)
 end
 % take the negative ll for fminsearch!
 optimal_funcval = -PlogObservation;
+end
+
+function plot_params(params)
+% specify the color map and figure properties
+cols = linspecer(9, 'qualitative');
+myfigureprops;
+figure;
+% just in case there are points where the fitting algorithm did not give a
+% valid solution, i.e., infinite or nan loglikelihood, remove those points
+trls = find(params.recoveredNlogL < 1e98);
+
+% first the parameter recovery
+subplot(4,4,1);hold on;
+scatter(params.actualparams(trls,1),params.recoveredparams(trls,1),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'ylim',[0 40], 'ytick', 0:20:40, 'xlim', [0 40], 'xtick', 0:20:40);
+xlabel('Estimation Noise');
+axis square;EquateAxis;
+offsetAxes;
+
+subplot(4,4,2);hold on;
+scatter(params.actualparams(trls,2),params.recoveredparams(trls,2),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'ylim',[0 1], 'ytick', 0:0.5:1, 'xlim', [0 1], 'xtick', 0:0.5:1);
+xlabel('W1');
+axis square;EquateAxis;
+offsetAxes;
+
+subplot(4,4,3);hold on;
+scatter(params.actualparams(trls,3),params.recoveredparams(trls,3),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'ylim',[0 1], 'ytick', 0:0.5:1, 'xlim', [0 1], 'xtick', 0:0.5:1);
+xlabel('W2');
+axis square;EquateAxis;
+offsetAxes;
+suplabel('Actual parameters','x');
+suplabel('Recovered parameters','y');
+
+% next we see if the model introduced any spurious correlations in the
+% recovered params
+subplot(4,4,5);hold on;
+scatter(params.actualparams(trls,2),params.actualparams(trls,3),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'ylim',[0 1], 'ytick', 0:0.5:1, 'xlim', [0 1], 'xtick', 0:0.5:1);
+axis square;EquateAxis;
+offsetAxes;
+xlabel('W1');
+ylabel('W2');
+
+subplot(4,4,6);hold on;
+scatter(params.actualparams(trls,1),params.actualparams(trls,2),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'xlim',[0 40], 'xtick', 0:20:40, 'ylim', [0 1], 'ytick', 0:0.5:1);
+axis square;
+offsetAxes;
+xlabel('Estimation Noise');
+ylabel('W1');
+
+subplot(4,4,7);hold on;
+scatter(params.actualparams(trls,1),params.actualparams(trls,3),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'xlim',[0 40], 'xtick', 0:20:40, 'ylim', [0 1], 'ytick', 0:0.5:1);
+axis square;
+offsetAxes;
+xlabel('Estimation Noise');
+ylabel('W2');
+
+subplot(4,4,9);hold on;
+scatter(params.recoveredparams(trls,2),params.recoveredparams(trls,3),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'ylim',[0 1], 'ytick', 0:0.5:1, 'xlim', [0 1], 'xtick', 0:0.5:1);
+axis square;EquateAxis;
+offsetAxes;
+xlabel('W1');
+ylabel('W2');
+
+subplot(4,4,10);hold on;
+scatter(params.recoveredparams(trls,1),params.recoveredparams(trls,2),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'xlim',[0 40], 'xtick', 0:20:40, 'ylim', [0 1], 'ytick', 0:0.5:1);
+axis square;
+offsetAxes;
+xlabel('Estimation Noise');
+ylabel('W1');
+
+subplot(4,4,11);hold on;
+scatter(params.recoveredparams(trls,1),params.recoveredparams(trls,3),30,'filled','MarkerEdgeColor',[1,1,1], 'MarkerFaceColor', cols(8,:));
+set(gca, 'xlim',[0 40], 'xtick', 0:20:40, 'ylim', [0 1], 'ytick', 0:0.5:1);
+axis square;
+offsetAxes;
+xlabel('Estimation Noise');
+ylabel('W2');
 end
