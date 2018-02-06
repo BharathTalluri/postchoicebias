@@ -11,19 +11,6 @@ behdata = readtable(sprintf('%s/Task_Cognitive.csv', behdatapath));
 subjects = unique(behdata.subj)';
 for sj = subjects
     dat             =  behdata(find(behdata.subj == sj),:);
-    % some preprocessing of the data is required for the analysis here
-    dat.x1_relative = dat.x1 - 50;
-    dat.x2_relative = dat.x2 - 50;
-    dat.binchoice(dat.binchoice == 1) = -1;
-    dat.binchoice(dat.binchoice == 2) = 1;
-    estimtrls = find(~isnan(dat.estim));
-    dat = dat(estimtrls,:);
-    % remove outliers
-    estim = dat.estim;
-    temp1 = iqr(estim); % get the inter quartile range
-    temp2 = quantile(estim,3);%get quartiles
-    usetrls = find((estim < temp2(3) + 1.5*temp1) & (estim > temp2(1) - 1.5*temp1)); % remove outliers
-    dat = dat(usetrls,:);
     % use only choice trials in this paper
     trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1);
     dat = dat(trls2use,:);
@@ -82,7 +69,9 @@ scatter(dat1, dat2, 50, 'filled', 'MarkerEdgeColor', [1 1 1], 'MarkerFaceColor',
 plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nanmean(dat2)], 'Color', cols(1,:),'LineWidth',2);
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', cols(1,:),'LineWidth',2);
 % polish the figure
-set(gca, 'XLim', [0.5 0.8], 'XTick', 0.5:0.1:0.8,'ylim',[0.5 0.8], 'ytick', 0.5:0.1:0.8);
+set(gca, 'XLim', [0.4 0.8], 'XTick', 0.4:0.1:0.8,'ylim',[0.4 0.8], 'ytick', 0.4:0.1:0.8);
+plot([0.5 0.5], [0.4 0.8], 'k:', 'LineWidth', 0.5);
+plot([0.4 0.8], [0.5 0.5], 'k:', 'LineWidth', 0.5);
 EquateAxis;
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
 axis square;

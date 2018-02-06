@@ -42,18 +42,15 @@ for sj = subjects
     elseif strcmp(task, 'Cognitive')
         % we are only interested in the psychometric function fits for the
         % cognitive task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228.
-        choicetrls      = find(abs(data.condition) == 1);
-        dat.relativex1 = dat.x1 - 50;
-        dat.binchoice(dat.binchoice == 1) = -1;
-        dat.binchoice(dat.binchoice == 2) = 1;
-        dat.relativex1(dat.relativex1 < 0 & dat.relativex1 >= -2) = -1;
-        dat.relativex1(dat.relativex1 < -2 & dat.relativex1 >= -4) = -2;
-        dat.relativex1(dat.relativex1 < -4 & dat.relativex1 >= -6) = -3;
-        dat.relativex1(dat.relativex1 < 2 & dat.relativex1 >= 0) = 1;
-        dat.relativex1(dat.relativex1 < 4 & dat.relativex1 >= 2) = 2;
-        dat.relativex1(dat.relativex1 < 6 & dat.relativex1 >= 3) = 3;
+        choicetrls      = find(abs(dat.condition) == 1);
+        dat.x1_relative(dat.x1_relative < 0 & dat.x1_relative >= -2) = -1;
+        dat.x1_relative(dat.x1_relative < -2 & dat.x1_relative >= -4) = -2;
+        dat.x1_relative(dat.x1_relative < -4 & dat.x1_relative >= -6) = -3;
+        dat.x1_relative(dat.x1_relative < 2 & dat.x1_relative >= 0) = 1;
+        dat.x1_relative(dat.x1_relative < 4 & dat.x1_relative >= 2) = 2;
+        dat.x1_relative(dat.x1_relative < 6 & dat.x1_relative >= 3) = 3;
         % PSYCHOMETRIC FUNCTIONS
-        [bias, slope] = fitcumnormal((dat.relativex1(choicetrls)), dat.binchoice(choicetrls)>0);
+        [bias, slope] = fitcumnormal((dat.x1_relative(choicetrls)), dat.binchoice(choicetrls)>0);
         
         ga.logisticFit(sj,:) = [bias, slope];
     end

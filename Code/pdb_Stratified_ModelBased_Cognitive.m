@@ -17,19 +17,6 @@ rng shuffle;
 global psycho_noise psycho_bias
 for iter = 1:500
     subj_dat             =  behdata;
-    % some preprocessing of the data is required for the analysis here
-    subj_dat.x1_relative = subj_dat.x1 - 50;
-    subj_dat.x2_relative = subj_dat.x2 - 50;
-    subj_dat.binchoice(subj_dat.binchoice == 1) = -1;
-    subj_dat.binchoice(subj_dat.binchoice == 2) = 1;
-    estimtrls = find(~isnan(subj_dat.estim));
-    subj_dat = subj_dat(estimtrls,:);
-    % remove outliers
-    estim = subj_dat.estim;
-    temp1 = iqr(estim); % get the inter quartile range
-    temp2 = quantile(estim,3);%get quartiles
-    usetrls = find((estim < temp2(3) + 1.5*temp1) & (estim > temp2(1) - 1.5*temp1)); % remove outliers
-    subj_dat = subj_dat(usetrls,:);
     % use only choice trials in this paper
     choicetrials = find(subj_dat.condition == 1 & abs(subj_dat.binchoice) == 1);
     subj_dat = subj_dat(choicetrials,:);
