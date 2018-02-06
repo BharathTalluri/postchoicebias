@@ -3,7 +3,7 @@ Repository for post-decision confirmation bias paper.
 If you use the data or the code, please cite Talluri, Urai et al. 2018.
 
 The repository is organized into the following folders:
-1. Perceptual_Experiment: Code to run the perceptual experiment. This code used Psychtoolbox-3 on MATLAB.
+1. Perceptual_Experiment: Code to run the perceptual experiment. This code uses Psychtoolbox-3 on MATLAB.
 2. Data: Contains raw data from both perceptual and cognitive tasks. The data for cognitive task was obtained from Bronfman et al. 2015 (https://datadryad.org/resource/doi:10.5061/dryad.40f6v). The folder also contains analysis-ready data files that are called by the analysis scripts, to replicate the figures and results in the paper. In addition, matlab scripts that give the analysis-ready data files from the raw data files are also provided in the folder. All data files are in csv format.
 3. Code: Contains all analysis scripts to replicate the figures and other results in the paper.
 
