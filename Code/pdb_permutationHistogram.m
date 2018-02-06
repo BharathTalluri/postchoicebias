@@ -47,7 +47,7 @@ for sj = subjects
     % coordinates
     [xlbl, ylbl] = meshgrid(dirs, dirs);
     lbl = strtrim(cellstr(num2str((permutationHistogram(:)')')));
-    text(xlbl(:), ylbl(:), lbl(:),'color', 'w',...
+    text(xlbl(:), ylbl(:), lbl(:),'color', 'k',...
         'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 7);
 end
 % make the colorbar prettier, move to the side
