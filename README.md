@@ -1,6 +1,7 @@
 # Post-choice Bias
 Repository for post-decision confirmation bias paper.
-If you use the data or the code, please cite Talluri, Urai et al. 2018.
+If you use the data or the code, please cite:
+Talluri, B. C., Urai, A. E., Tsetsos, K., Usher, M., Donner, T. H. (2018) Confirmation bias in continuous decisions: Giving more weight to choice-consistent evidence. under review.
 
 The repository is organized into the following folders:
 1. Perceptual_Experiment: Code to run the perceptual experiment. This code uses Psychtoolbox-3 (http://psychtoolbox.org/) on MATLAB.
