@@ -82,7 +82,7 @@ subplot(441);
 
 avg_permutation_histogram = squeeze(round(nanmean(ga_permutation_histogram)));
 colormap viridis;
-imagesc(dirs, dirs, avg_permutation_histogram, [30 45]);
+imagesc(dirs, dirs, avg_permutation_histogram, [38 44]);
 axis square;
 set(gca, 'ydir', 'normal');
 title('Mean trial count');
@@ -133,6 +133,17 @@ text(xlbl(zeroIdx), ylbl(zeroIdx), lbl(zeroIdx),'color', 'w',...
 
 % labels
 xlabel(sprintf('Interval 1 direction (%c)', char(176)));
-xlabel(sprintf('Interval 2 direction (%c)', char(176)));
+ylabel(sprintf('Interval 2 direction (%c)', char(176)));
 tightfig;
 print(gcf, '-dpdf', 'Figures/figureS2_trialCountHistogram.pdf');
+
+%% Let?s just show the group average matrix of trial distributions 
+% and report the range of trial numbers, across individuals and cells. 
+
+% ignore zeros in the corners
+ga_permutation_histogram(ga_permutation_histogram == 0) = NaN;
+
+fprintf('Across all participants and stimulus direction pairs, the number of trials ranged betweeen %d and %d (median %d). \n', ...
+    nanmin(ga_permutation_histogram(:)), ...
+    nanmax(ga_permutation_histogram(:)), ...
+    nanmedian(ga_permutation_histogram(:)));

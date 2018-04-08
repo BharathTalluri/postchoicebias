@@ -51,7 +51,7 @@ for sj = subjects
     [xlbl, ylbl] = meshgrid(dirs, dirs);
     lbl = strtrim(cellstr(num2str((permutationHistogram(:)')')));
     text(xlbl(:), ylbl(:), lbl(:),'color', 'k',...
-        'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 7);
+        'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
 end
 % make the colorbar prettier, move to the side
 c       = colorbar;
@@ -80,12 +80,13 @@ suplabel('Interval 2 direction', 'y');
 figure;
 subplot(441);
 
-avg_permutation_histogram = squeeze(nanmedian(ga_permutation_histogram));
+avg_permutation_histogram = squeeze(round(nanmean(ga_permutation_histogram)));
 colormap viridis;
-imagesc(dirs, dirs, avg_permutation_histogram, [0 45]);
+imagesc(dirs, dirs, avg_permutation_histogram, [38 44]);
 axis square;
 set(gca, 'ydir', 'normal');
-title('Median trial count');
+title('Mean trial count');
+set(gca, 'xtick', -20:10:20, 'ytick', -20:10:20);
 hold on;
 
 plotGrid = -25:10:25;
@@ -104,27 +105,43 @@ end
 [xlbl, ylbl] = meshgrid(dirs, dirs);
 lbl = strtrim(cellstr(num2str((avg_permutation_histogram(:)')')));
 text(xlbl(:), ylbl(:), lbl(:),'color', 'k',...
-    'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 7);
+    'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
 
+% add 0 in white
+zeroIdx = find(ismember(lbl, '0'));
+text(xlbl(zeroIdx), ylbl(zeroIdx), lbl(zeroIdx),'color', 'w',...
+    'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
 
-% make the colorbar prettier, move to the side
-c       = colorbar;
-ax      = gca;
-axpos   = ax.Position;
-cpos    = c.Position;
-cpos(3) = 0.3*cpos(3); % thinner
-cpos(1) = cpos(1)*1.2; % to the rigth
-cpos(4) = cpos(4) *0.9; % shorter
-c.Position = cpos;
-ax.Position = axpos;
-% put a string on top of the colorbar
-c.Label.String = 'Number of trials';
-c.Label.Rotation = 270;
-c.Label.HorizontalAlignment = 'center';
-c.Box = 'off';
-c.TickDirection = 'out';
-clpos = c.Label.Position; clpos(1) = clpos(1)*4;
-c.Label.Position = clpos;
+% % make the colorbar prettier, move to the side
+% c       = colorbar;
+% ax      = gca;
+% axpos   = ax.Position;
+% cpos    = c.Position;
+% cpos(3) = 0.5*cpos(3); % thinner
+% cpos(1) = cpos(1)*1.3; % to the rigth
+% cpos(4) = cpos(4) *0.9; % shorter
+% c.Position = cpos;
+% ax.Position = axpos;
+% % put a string on top of the colorbar
+% c.Label.String = 'Number of trials';
+% c.Label.Rotation = 270;
+% c.Label.HorizontalAlignment = 'center';
+% c.Box = 'off';
+% c.TickDirection = 'out';
+% clpos = c.Label.Position; clpos(1) = clpos(1)*4;
+% c.Label.Position = clpos;
+
 % labels
-xlabel('Interval 1 direction', 'x');
-ylabel('Interval 2 direction', 'y');
+xlabel(sprintf('Interval 1 direction (%c)', char(176)));
+ylabel(sprintf('Interval 2 direction (%c)', char(176)));
+tightfig;
+print(gcf, '-dpdf', 'Figures/figureS2_trialCountHistogram.pdf');
+
+%% Let?s just show the group average matrix of trial distributions 
+% and report the range of trial numbers, across individuals and cells. 
+
+% ignore zeros in the corners
+ga_permutation_histogram(ga_permutation_histogram == 0) = NaN;
+
+fprintf('Across subjects and %d - %d \n', nanmin(ga_permutation_histogram(:)), ...
+    nanmax(ga_permutation_histogram(:)));
