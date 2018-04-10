@@ -67,7 +67,7 @@ options.Robust = 'on';
 dat = subj_dat;
 [individualparams, ~]=subplex('pdb_model', starting_pt);
 % optimise again, just to make sure we are at the minimum
-[subj_params,subj_NlogL] = fminsearchbnd(@(individualparams) pdb_model(individualparams),individualparams,[0,-1000,-1000],[80,1000,1000],options);
+[subj_params,subj_NlogL] = fminsearchbnd(@(individualparams) pdb_model(individualparams),individualparams,[0,0,0],[20,1,1],options);
 end
 
 function optimal_funcval = pdb_model(individualparams)
