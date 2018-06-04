@@ -12,7 +12,8 @@ behdatapath = '../Data';
 behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
 subjects = unique(behdata.subj)';
 ga_permutation_histogram = nan(numel(unique(subjects)), 5, 5);
-
+rejectsj = [2,6,12,13];
+subjects(rejectsj) = [];
 for sj = subjects
     dat = behdata(find(behdata.subj == sj),:);
     % define the type of trials
@@ -134,7 +135,6 @@ text(xlbl(zeroIdx), ylbl(zeroIdx), lbl(zeroIdx),'color', 'w',...
 % labels
 xlabel(sprintf('Interval 1 direction (%c)', char(176)));
 ylabel(sprintf('Interval 2 direction (%c)', char(176)));
-tightfig;
 print(gcf, '-dpdf', 'Figures/figureS2_trialCountHistogram.pdf');
 
 %% Let?s just show the group average matrix of trial distributions 

@@ -12,7 +12,13 @@ figure;
 behdatapath = '../Data';
 behdata = readtable(sprintf('%s/Task_%s.csv', behdatapath, task));
 % initialise some variables
-subjects = unique(behdata.subj)';
+if strcmp(task, 'Perceptual')
+    subjects = unique(behdata.subj)';
+    rejectsj = [2,6,12,13];
+    subjects(rejectsj) = [];
+elseif strcmp(task, 'Cognitive')
+    subjects = unique(behdata.subj)';
+end
 if strcmp(task, 'Perceptual')
     meanevidence = [];
     logisticPoints = NaN(length(subjects), 5);
@@ -32,13 +38,13 @@ for sj = subjects
         meanevidence = [meanevidence; dat.xavg(estimtrls)];
         % Psychometric function, we define the psychometric function below
         [bias, slope] = fitcumnormal((dat.x1), dat.binchoice>0);
-        ga.logisticFit(sj, :)   = [bias, slope];
+        ga.logisticFit(find(sj==subjects), :)   = [bias, slope];
         dat2 = dat.binchoice;
         dat2(dat2<0) = 0;
-        logisticPoints(sj, :) = splitapply(@nanmean, dat2, findgroups(dat.x1));
+        logisticPoints(find(sj==subjects), :) = splitapply(@nanmean, dat2, findgroups(dat.x1));
         % Estimations
         dat = dat(estimtrls,:);
-        estimations(sj, :) = splitapply(@nanmedian, dat.estim, findgroups(dat.xavg));
+        estimations(find(sj==subjects), :) = splitapply(@nanmedian, dat.estim, findgroups(dat.xavg));
     elseif strcmp(task, 'Cognitive')
         % we are only interested in the psychometric function fits for the
         % cognitive task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228.
@@ -52,7 +58,7 @@ for sj = subjects
         % PSYCHOMETRIC FUNCTIONS
         [bias, slope] = fitcumnormal((dat.x1_relative(choicetrls)), dat.binchoice(choicetrls)>0);
         
-        ga.logisticFit(sj,:) = [bias, slope];
+        ga.logisticFit(find(sj==subjects),:) = [bias, slope];
     end
 end
 %% SHOW THE DATA
@@ -61,8 +67,8 @@ if isplot
     % psychometric functions
     subplot(4,4,1); hold on;
     plot([0 0],[0 1],'-','color',cols(8,:),'LineWidth',1);
-    errbar([-20 -10 0 10 20], median(logisticPoints),std(logisticPoints) ./ sqrt(length(subjects)),'k-','LineWidth',1);
-    plot(x, cumnormal(median(ga.logisticFit(subjectidx, :)), x), '-', 'color', [0 0 0],'MarkerSize',5);
+    errbar([-20 -10 0 10 20], mean(logisticPoints),std(logisticPoints) ./ sqrt(length(subjects)),'k-','LineWidth',1);
+    plot(x, cumnormal(mean(ga.logisticFit(subjectidx, :)), x), '-', 'color', [0 0 0],'MarkerSize',5);
     set(gca, 'XLim', [-20 20], 'XTick', -20:10:20, 'ylim',[0 1], 'ytick', 0.0:0.5:1.0);
     xlabel('Stimulus in interval 1 (degrees)'); ylabel('Proportion CW choices');
     axis square;
@@ -87,7 +93,7 @@ if isplot
     ylabel ('Trials')
     xlabel('Mean Evidence (degrees)');
     axis square;
-    set(gca, 'XLim', [-25 25], 'XTick', -20:20:20,'YLim',[0 5000],'YTick',0:2500:5000);
+    set(gca, 'XLim', [-25 25], 'XTick', -20:20:20,'YLim',[0 2000],'YTick',0:1000:2000);
     offsetAxes;
 end
 end
