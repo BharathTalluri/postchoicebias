@@ -1,21 +1,16 @@
-function pdb_DistanceMatched_ModelBased_Perceptual()
+function pdb_DistanceMatched_ModelBased_Perceptual(behdata, isplot)
 
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code calculates
 % model based weights for consistent and inconsistent trials matched in
-% terms of the deivation between first and second intervals and and 
-% reproduces figure S3  of the paper.
-close all;
-clc; dbstop if error;
+% terms of the deivation between first and second intervals and and
+% reproduces figure S2E  of the paper.
 % specify the path to the data
-behdatapath = '../Data';
-behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
+
+global subjects;global psycho_fits;
 % initialise some variables
-subjects = unique(behdata.subj)';
 Finalparams = NaN (length(subjects), 6);
 FinalNlogL = NaN(length(subjects),1);
-% get the noise and bias parameters from psychometric fits
-psycho_fits = pdb_Behaviour('Perceptual', 0);
 rng shuffle;
 global psycho_noise psycho_bias
 for sj = subjects
@@ -43,13 +38,15 @@ for sj = subjects
     end
     subj_dat = subj_dat(matched_trls,:);
     % now to fitting, as usual
-    psycho_noise = psycho_fits.logisticFit(sj, 2);
-    psycho_bias = -psycho_fits.logisticFit(sj, 1);
+    psycho_noise = psycho_fits.logisticFit(find(sj==subjects), 2);
+    psycho_bias = -psycho_fits.logisticFit(find(sj==subjects), 1);
     starting_pt = [datasample(1:5:25, 1) datasample(1:5:25, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1)];
-    [Finalparams(sj,:), FinalNlogL(sj)] = fit_model(subj_dat, starting_pt);
+    [Finalparams(find(sj==subjects),:), FinalNlogL(find(sj==subjects))] = fit_model(subj_dat, starting_pt);
 end
-% to the plotting function now
-plot_params(Finalparams);
+if isplot
+    % to the plotting function now
+    plot_params(Finalparams);
+end
 end
 
 function [subj_params, subj_NlogL] = fit_model(subj_dat, starting_pt)
@@ -142,26 +139,27 @@ end
 
 function plot_params(params)
 % specify the color map and figure properties
-cols = linspecer(9, 'qualitative');
-myfigureprops;
+cols = linspecer(10, 'qualitative');
+colormap(linspecer);
 figure;
 subplot(4,4,1); hold on;
 % weights of second interval
 dat1 = params(:, 5);
 dat2 = params(:, 6);
-scatter(dat1, dat2, 50, 'filled', 'MarkerEdgeColor', [1 1 1], 'MarkerFaceColor', cols(2,:));
+dat11 = []; dat22 = [];
+% polish the figure
+set(gca, 'XLim', [-0.2 0.8], 'XTick', -0.2:0.2:0.8,'ylim',[-0.2 0.8], 'ytick', -0.2:0.2:0.8);
+axis square;
+plot([0 00], [-0.2 0.8], 'k', 'LineWidth', 0.25);
+plot([-0.2 0.8], [0 0], 'k', 'LineWidth', 0.25);
+EquateAxis;
+myscatter(dat1, dat2, [dat11 dat22], 75, cols, cols, cols);
 % plot the group mean +/- s.e.m
 plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nanmean(dat2)], 'Color', cols(1,:),'LineWidth',2);
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', cols(1,:),'LineWidth',2);
-% polish the figure
-set(gca, 'XLim', [-0.2 0.8], 'XTick', -0.2:0.2:0.8,'ylim',[-0.2 0.8], 'ytick', -0.2:0.2:0.8);
-plot([0 0], [-0.2 0.8], 'k:', 'LineWidth', 0.5);
-plot([-0.2 0.8], [0 0], 'k:', 'LineWidth', 0.5);
-EquateAxis;
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
-axis square;
-xlabel({'Weight for', 'Inconsistent second evidence'});
-ylabel({'Weight for', 'Consistent second evidence'});
+xlabel({'Weight for subsequent', 'inconsistent stimulus'});
+ylabel({'Weight for subsequent', 'consistent stimulus'});
 offsetAxes;
-title({'Model-based results',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
+title({'Figure S2E',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
 end

@@ -1,21 +1,17 @@
-function pdb_ModelBased_Perceptual()
+function [params, BIC] = pdb_Perceptual_StimulusSelectiveModel(behdata, isplot)
 
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code calculates
-% model based weights and reproduces figure 2A, figures S4A of the paper.
-close all;
-clc; dbstop if error;
-% specify the path to the data
-behdatapath = '../Data';
-behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
+% model based weights for the stimulus-based selective gain model.
+global subjects;global psycho_fits;
 % initialise some variables
-subjects = unique(behdata.subj)';
-Finalparams.actual = NaN (length(subjects), 6);
-Finalparams.lowCI = NaN (length(subjects), 6);
-Finalparams.highCI = NaN (length(subjects), 6);
+Finalparams = NaN (length(subjects), 6);
 FinalNlogL = NaN(length(subjects),1);
-% get the noise and bias parameters from psychometric fits
-psycho_fits = pdb_Behaviour('Perceptual', 0);
+BIC = NaN(length(subjects),1);
+anova.x = [];
+anova.sj = [];
+anova.f1 = [];
+anova.f2 = [];
 rng shuffle;
 global psycho_noise psycho_bias
 for sj = subjects
@@ -23,30 +19,27 @@ for sj = subjects
     % use only choice trials in this paper
     choicetrials = find(subj_dat.condition == 1 & abs(subj_dat.binchoice) == 1);
     subj_dat = subj_dat(choicetrials,:);
-    % since consistency cannot be defined for trials where x2 = 0, remove those
+    % since stimulus consistency cannot be defined for trials where x2/x1 = 0, remove those
     % trials
-    trls2use    = find(subj_dat.x2 ~= 0);
+    trls2use    = find(subj_dat.x2 ~= 0 & subj_dat.x1 ~= 0);
     subj_dat             = subj_dat(trls2use, :);
-    psycho_noise = psycho_fits.logisticFit(sj, 2);
-    psycho_bias = -psycho_fits.logisticFit(sj, 1);
+    psycho_noise = psycho_fits.logisticFit(find(sj==subjects), 2);
+    psycho_bias = -psycho_fits.logisticFit(find(sj==subjects), 1);
     starting_pt = [datasample(1:5:25, 1) datasample(1:5:25, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1) datasample(0.05:0.05:1, 1)];
-    [Finalparams.actual(sj,:), FinalNlogL(sj)] = fit_model(subj_dat, starting_pt);
-    % now to bootstrapped parameters
-    numtrls = size(subj_dat,1);
-    bootstrap_subj_params = NaN(500,6);
-    for k = 1:500
-        % sample trials with replacement
-        bootstrap_subj_dat = datasample(subj_dat,numtrls);
-        % use the actual parameters as starting point for the bootstraps
-        bootstrap_starting_pt = Finalparams.actual(sj,:);
-        [bootstrap_subj_params(k, :), ~] = fit_model(bootstrap_subj_dat, bootstrap_starting_pt);
-    end
-    CI_params = prctile(bootstrap_subj_params, [2.5, 97.5]);
-    Finalparams.lowCI(sj,:) = CI_params(1,:);
-    Finalparams.upCI(sj,:) = CI_params(2,:);
+    [Finalparams(find(sj==subjects),:), FinalNlogL(find(sj==subjects))] = fit_model(subj_dat, starting_pt);
+    [~, BIC(find(sj==subjects))] = aicbic(-FinalNlogL(find(sj==subjects)), size(Finalparams(find(sj==subjects),:),2) , size(subj_dat, 1));
+    anova.x     = [anova.x; Finalparams(find(sj == subjects),3); Finalparams(find(sj == subjects),5); Finalparams(find(sj == subjects),4); Finalparams(find(sj == subjects),6)];
+    anova.sj    = [anova.sj; find(sj == subjects) * ones(4, 1)];
+    anova.f1    = [anova.f1; [1 2 1 2]'];
+    anova.f2    = [anova.f2; [1 1 2 2]'];
 end
-% to the plotting function now
-plot_params(Finalparams);
+params = Finalparams;
+% compute 2-way ANOVA measures
+anov = rm_anova(anova.x, anova.sj, {anova.f1; anova.f2});
+if isplot
+    % to the plotting function now
+    plot_params(Finalparams, anov);
+end
 end
 
 function [subj_params, subj_NlogL] = fit_model(subj_dat, starting_pt)
@@ -63,7 +56,7 @@ options.Robust = 'on';
 % first fit the consistent trials
 % define a random starting point for the fitting algorithm
 startingpoint = starting_pt([1,3,5]);
-TrlsConsistent = find(sign(subj_dat.binchoice) == sign(subj_dat.x2));
+TrlsConsistent = find(sign(subj_dat.x1) == sign(subj_dat.x2));
 dat = subj_dat(TrlsConsistent,:);
 [individualparams_consistent, ~]=subplex('pdb_model', startingpoint);
 % optimise again, just to make sure we are at the minimum
@@ -72,7 +65,7 @@ dat = subj_dat(TrlsConsistent,:);
 % now fit the inconsistent trials
 % define a random starting point for the fitting algorithm
 startingpoint = starting_pt([2,4,6]);
-TrlsInconsistent = find(sign(subj_dat.binchoice) ~= sign(subj_dat.x2));
+TrlsInconsistent = find(sign(subj_dat.x1) ~= sign(subj_dat.x2));
 dat = subj_dat(TrlsInconsistent,:);
 [individualparams_inconsistent, ~] = subplex('pdb_model', startingpoint);
 % optimise again, just to make sure we are at the minimum
@@ -137,24 +130,16 @@ end
 optimal_funcval = -PlogObservation;
 end
 
-function plot_params(boot_params)
+function plot_params(boot_params, anov)
 % specify the color map and figure properties
-cols = linspecer(9, 'qualitative');
+cols = linspecer(10, 'qualitative');
 myfigureprops;
 figure;
 subplot(4,4,1); hold on;
 % weights of second interval
-dat1 = boot_params.actual(:, 5);
-dat2 = boot_params.actual(:, 6);
-% get the 95% confidence intervals
-dat11 = [boot_params.lowCI(:,5)'; boot_params.highCI(:,5)'];
-dat22 = [boot_params.lowCI(:,6)'; boot_params.highCI(:,6)'];
-% plot the confidence intervals for each subject
-for i = 1:length(dat1)
-    plot([dat11(1,i) dat11(2,i)], [dat2(i) dat2(i)], 'Color', cols(2,:),'LineWidth',0.25);
-    plot([dat1(i) dat1(i)], [dat22(1,i)  dat22(2,i)], 'Color', cols(2,:),'LineWidth',0.25);
-end
-scatter(dat1, dat2, 50, 'filled', 'MarkerEdgeColor', [1 1 1], 'MarkerFaceColor', cols(2,:));
+dat1 = boot_params(:, 5);
+dat2 = boot_params(:, 6);
+myscatter(dat1, dat2, [], 75, cols, cols, cols);
 % plot the group mean +/- s.e.m
 plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nanmean(dat2)], 'Color', cols(1,:),'LineWidth',2);
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', cols(1,:),'LineWidth',2);
@@ -165,52 +150,36 @@ plot([-0.2 1.0], [0 0], 'k:', 'LineWidth', 0.5);
 EquateAxis;
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
 axis square;
-xlabel({'Weight for', 'Inconsistent second evidence'});
-ylabel({'Weight for', 'Consistent second evidence'});
+xlabel({'Weight for subsequent', 'inconsistent stimulus'});
+ylabel({'Weight for subsequent', 'consistent stimulus'});
 offsetAxes;
 title({'Model-based results',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
 
-subplot(4,4,9); hold on;
-% weights of first interval
-dat1 = boot_params.actual(:, 3);
-dat2 = boot_params.actual(:, 4);
-% get the 95% confidence intervals
-dat11 = [boot_params.lowCI(:,3)'; boot_params.highCI(:,3)'];
-dat22 = [boot_params.lowCI(:,4)'; boot_params.highCI(:,4)'];
-% plot the confidence intervals for each subject
-for i = 1:length(dat1)
-    plot([dat11(1,i) dat11(2,i)], [dat2(i) dat2(i)], 'Color', cols(2,:),'LineWidth',0.25);
-    plot([dat1(i) dat1(i)], [dat22(1,i)  dat22(2,i)], 'Color', cols(2,:),'LineWidth',0.25);
-end
-scatter(dat1, dat2, 50, 'filled', 'MarkerEdgeColor', [1 1 1], 'MarkerFaceColor', cols(2,:));
-% plot the group mean +/- s.e.m
-plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nanmean(dat2)], 'Color', cols(1,:),'LineWidth',2);
-plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', cols(1,:),'LineWidth',2);
-% polish the figure
-set(gca, 'XLim', [-0.5 1.0], 'XTick', -0.5:0.5:1.0,'ylim',[-0.5 1.0], 'ytick', -0.5:0.5:1.0);
-plot([0 0], [-0.5 1.0], 'k:', 'LineWidth', 0.5);
-plot([-0.5 1.0], [0 0], 'k:', 'LineWidth', 0.5);
-EquateAxis;
-[pval] = permtest(dat1, dat2, 0, 100000); % permutation test
-axis square;
-xlabel({'Weight for first evidence', 'in Inconsistent trials'});
-ylabel({'Weight for first evidence', 'in Consistent trials'});
-offsetAxes;
-title(sprintf('Consistent vs. Inconsistent: p = %.4f', pval));
+subplot(4,4,3); hold on;
+plot([1 2], nanmean([boot_params(:, 3) boot_params(:, 5)], 1), 'O-', 'Color', [0 0 0], 'MarkerSize', 7.5, 'LineWidth', 1.5, 'MarkerFaceColor', [0 0 0], 'MarkerEdgeColor', [1,1,1]);
+plot([1 2], nanmean([boot_params(:, 4) boot_params(:, 6)], 1), 'O-', 'Color', [0.6 0.6 0.6], 'MarkerSize', 7.5, 'LineWidth', 1.5, 'MarkerFaceColor', [0.6 0.6 0.6], 'MarkerEdgeColor', [1,1,1]);
+errbar([1 2], nanmean([boot_params(:, 3) boot_params(:, 5)], 1), nanstd([boot_params(:, 3) boot_params(:, 5)], 1) ./ sqrt(length(boot_params(:, 3))), '-','Color', [0 0 0], 'LineWidth',1);
+errbar([1 2], nanmean([boot_params(:, 4) boot_params(:, 6)], 1), nanstd([boot_params(:, 4) boot_params(:, 6)], 1) ./ sqrt(length(boot_params(:, 4))), '-','Color', [0.6 0.6 0.6], 'LineWidth',1);
+set(gca, 'XLim', [0.5 2.5], 'XTick', 1:2, 'XTickLabel', {'Stimulus 1', 'Stimulus 2'},  'ylim',[0 0.6], 'ytick', 0:0.3:0.6);
+ylabel('Weights');
+axis square;offsetAxes;
+[pval] = permtest(boot_params(:, 3), boot_params(:, 5), 0, 100000); % ranksum much faster than permtest
+mysigstar([1, 2], 0.4, pval, 0);
+[pval] = permtest(boot_params(:, 4), boot_params(:, 6), 0, 100000); % ranksum much faster than permtest
+mysigstar([1, 2], 0, pval, 0);
+[pval] = permtest(boot_params(:, 3), boot_params(:, 4), 0, 100000); % ranksum much faster than permtest
+mysigstar(0.8, 0.4, pval, 0);
+[pval] = permtest(boot_params(:, 5), boot_params(:, 6), 0, 100000); % ranksum much faster than permtest
+mysigstar(2.2, 0.4, pval, 0);
+legend('Consistent trials', 'Inconsistent trials');
+title(sprintf('F_{(%d,%d)} = %.2f, p = %.3f', anov.f1xf2.df, anov.f1xf2.fstats, anov.f1xf2.pvalue))
 
-subplot(4,4,11); hold on;
+
+subplot(4,4,9); hold on;
 % estimation noise
-dat1 = boot_params.actual(:, 1);
-dat2 = boot_params.actual(:, 2);
-% get the 95% confidence intervals
-dat11 = [boot_params.lowCI(:,1)'; boot_params.highCI(:,1)'];
-dat22 = [boot_params.lowCI(:,2)'; boot_params.highCI(:,2)'];
-% plot the confidence intervals for each subject
-for i = 1:length(dat1)
-    plot([dat11(1,i) dat11(2,i)], [dat2(i) dat2(i)], 'Color', cols(2,:),'LineWidth',0.25);
-    plot([dat1(i) dat1(i)], [dat22(1,i)  dat22(2,i)], 'Color', cols(2,:),'LineWidth',0.25);
-end
-scatter(dat1, dat2, 50, 'filled', 'MarkerEdgeColor', [1 1 1], 'MarkerFaceColor', cols(2,:));
+dat1 = boot_params(:, 1);
+dat2 = boot_params(:, 2);
+myscatter(dat1, dat2, [], 75, cols, cols, cols);
 % plot the group mean +/- s.e.m
 plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nanmean(dat2)], 'Color', cols(1,:),'LineWidth',2);
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', cols(1,:),'LineWidth',2);
@@ -219,8 +188,8 @@ set(gca, 'XLim', [0 20], 'XTick', 0:10:20,'ylim',[0 20], 'ytick', 0:10:20);
 EquateAxis;
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
 axis square;
-xlabel({'Estimation noise for', 'Inconsistent trials'});
-ylabel({'Estimation noise for', 'Consistent trials'});
+xlabel({'Estimation noise', 'for Inconsistent trials'});
+ylabel({'Estimation noise', 'for Consistent trials'});
 offsetAxes;
 title(sprintf('Consistent vs. Inconsistent: p = %.4f', pval));
 end

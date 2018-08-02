@@ -1,41 +1,61 @@
-function pdb_permutationHistogram()
+function pdb_permutationHistogram(behdata)
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code reproduces
-% figure S1 of the paper.
-close all;
-clc; dbstop if error;
-% specify the figure properties
-myfigureprops;
+% figure S1 C, D of the paper.
+global subjects;
 figure;
-% specify the path to the data
-behdatapath = '../Data';
-behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
-subjects = unique(behdata.subj)';
 ga_permutation_histogram = nan(numel(unique(subjects)), 5, 5);
-rejectsj = [2,6,12,13];
-subjects(rejectsj) = [];
-for sj = subjects
-    dat = behdata(find(behdata.subj == sj),:);
-    % define the type of trials
-    trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1);
-    dat = dat(trls2use,:);
-    permutationHistogram = nan(5,5);
-    dirs = -20:10:20;
-    for d = 1:length(dirs)
-        x1trls = find(dat.x1 == dirs(d));
-        for d2 = 1:length(dirs)
-            permutationHistogram(d, d2) = length(find(dat.x2(x1trls) == dirs(d2)));
+for types = 1:3
+    for sj = subjects
+        dat = behdata(find(behdata.subj == sj),:);
+        % define the type of trials
+        switch types
+            case 1
+                trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1);
+            case 2
+                trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1 & sign(dat.binchoice) == sign(dat.x2) & dat.x2 ~= 0);
+            case 3
+                trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1 & sign(dat.binchoice) ~= sign(dat.x2) & dat.x2 ~= 0);
         end
+        dat = dat(trls2use,:);
+        permutationHistogram = nan(5,5);
+        dirs = -20:10:20;
+        for d = 1:length(dirs)
+            x1trls = find(dat.x1 == dirs(d));
+            for d2 = 1:length(dirs)
+                permutationHistogram(d, d2) = length(find(dat.x2(x1trls) == dirs(d2)));
+            end
+        end
+        ga_permutation_histogram(find(sj == subjects), :, :) = permutationHistogram;
     end
-    % plot grid
-    subplot(4,4,find(sj==subjects));
-    ga_permutation_histogram(find(sj == subjects), :, :) = permutationHistogram;
+    
+    %% PLOT THE HISTOGRAM SHOWING THE AVERAGE TRIAL COUNTS
+    subplot(4,4,types);
+    
+    avg_permutation_histogram = squeeze(round(nanmean(ga_permutation_histogram)));
     colormap viridis;
-    imagesc(dirs, dirs, permutationHistogram, [0 45]);
+    switch types
+        case 1
+            imagesc(dirs, dirs, avg_permutation_histogram, [38 44]);
+        case 2
+            imagesc(dirs, dirs, avg_permutation_histogram, [5 40]);
+        case 3
+            imagesc(dirs, dirs, avg_permutation_histogram, [5 40]);
+    end
+    
     axis square;
     set(gca, 'ydir', 'normal');
-    title(sprintf('S%02d', sj));
+    switch types
+        case 1
+            title('Choice trials');
+        case 2
+            title('Consistent trials');
+        case 3
+            title('Inconsistent trials');
+    end
+    set(gca, 'xtick', -20:10:20, 'ytick', -20:10:20);
     hold on;
+    
     plotGrid = -25:10:25;
     % show grid lines
     for k = plotGrid
@@ -50,100 +70,11 @@ for sj = subjects
     end
     % coordinates
     [xlbl, ylbl] = meshgrid(dirs, dirs);
-    lbl = strtrim(cellstr(num2str((permutationHistogram(:)')')));
-    text(xlbl(:), ylbl(:), lbl(:),'color', 'k',...
-        'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
+    lbl = strtrim(cellstr(num2str((avg_permutation_histogram(:)')')));
+    text(xlbl(:), ylbl(:), lbl(:),'color', 'w',...
+        'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 7);
+    
+    % labels
+    xlabel(sprintf('Interval 2 direction (%c)', char(176)));
+    ylabel(sprintf('Interval 1 direction (%c)', char(176)));
 end
-% make the colorbar prettier, move to the side
-c       = colorbar;
-ax      = gca;
-axpos   = ax.Position;
-cpos    = c.Position;
-cpos(3) = 0.3*cpos(3); % thinner
-cpos(1) = cpos(1)*1.2; % to the rigth
-cpos(4) = cpos(4) *0.9; % shorter
-c.Position = cpos;
-ax.Position = axpos;
-% put a string on top of the colorbar
-c.Label.String = 'Number of trials';
-c.Label.Rotation = 270;
-c.Label.HorizontalAlignment = 'center';
-c.Box = 'off';
-c.TickDirection = 'out';
-clpos = c.Label.Position; clpos(1) = clpos(1)*4;
-c.Label.Position = clpos;
-% labels
-suplabel('Interval 1 direction', 'x');
-suplabel('Interval 2 direction', 'y');
-
-
-%% NOW ADD THE SAME BUT FOR GRAND AVERAGe
-figure;
-subplot(441);
-
-avg_permutation_histogram = squeeze(round(nanmean(ga_permutation_histogram)));
-colormap viridis;
-imagesc(dirs, dirs, avg_permutation_histogram, [38 44]);
-axis square;
-set(gca, 'ydir', 'normal');
-title('Mean trial count');
-set(gca, 'xtick', -20:10:20, 'ytick', -20:10:20);
-hold on;
-
-plotGrid = -25:10:25;
-% show grid lines
-for k = plotGrid
-    % horizontal lines
-    x = [plotGrid(1) plotGrid(end)];
-    y = [k k];
-    plot(x,y,'Color','w','LineStyle','-');
-    % vertical lines
-    x = [k k];
-    y = [plotGrid(1) plotGrid(end)];
-    plot(x,y,'Color','w','LineStyle','-');
-end
-% coordinates
-[xlbl, ylbl] = meshgrid(dirs, dirs);
-lbl = strtrim(cellstr(num2str((avg_permutation_histogram(:)')')));
-text(xlbl(:), ylbl(:), lbl(:),'color', 'k',...
-    'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
-
-% add 0 in white
-zeroIdx = find(ismember(lbl, '0'));
-text(xlbl(zeroIdx), ylbl(zeroIdx), lbl(zeroIdx),'color', 'w',...
-    'HorizontalAlignment','center','VerticalAlignment','middle', 'fontsize', 6);
-
-% % make the colorbar prettier, move to the side
-% c       = colorbar;
-% ax      = gca;
-% axpos   = ax.Position;
-% cpos    = c.Position;
-% cpos(3) = 0.5*cpos(3); % thinner
-% cpos(1) = cpos(1)*1.3; % to the rigth
-% cpos(4) = cpos(4) *0.9; % shorter
-% c.Position = cpos;
-% ax.Position = axpos;
-% % put a string on top of the colorbar
-% c.Label.String = 'Number of trials';
-% c.Label.Rotation = 270;
-% c.Label.HorizontalAlignment = 'center';
-% c.Box = 'off';
-% c.TickDirection = 'out';
-% clpos = c.Label.Position; clpos(1) = clpos(1)*4;
-% c.Label.Position = clpos;
-
-% labels
-xlabel(sprintf('Interval 1 direction (%c)', char(176)));
-ylabel(sprintf('Interval 2 direction (%c)', char(176)));
-print(gcf, '-dpdf', 'Figures/figureS2_trialCountHistogram.pdf');
-
-%% Let?s just show the group average matrix of trial distributions 
-% and report the range of trial numbers, across individuals and cells. 
-
-% ignore zeros in the corners
-ga_permutation_histogram(ga_permutation_histogram == 0) = NaN;
-
-fprintf('Across all participants and stimulus direction pairs, the number of trials ranged betweeen %d and %d (median %d). \n', ...
-    nanmin(ga_permutation_histogram(:)), ...
-    nanmax(ga_permutation_histogram(:)), ...
-    nanmedian(ga_permutation_histogram(:)));
