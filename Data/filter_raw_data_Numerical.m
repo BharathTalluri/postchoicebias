@@ -1,7 +1,7 @@
-function new_data = filter_raw_data_Cognitive()
+function new_data = filter_raw_data_Numerical()
 % Bharath Talluri & Anne Urai
 % get raw data and pre-process it for all other analyses
-dat = readtable('Rawdata_Cognitive.csv');
+dat = readtable('Rawdata_Numerical.csv');
 % remove trials where subjects did not adhere to instructions and where
 % binary response was too fast
 subjects = unique(dat.subj)';
