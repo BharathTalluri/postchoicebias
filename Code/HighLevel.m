@@ -61,3 +61,5 @@ pdb_Perceptual_ChoiceSelectiveModel(behdata, 'zero', bootstrap, compare, isplot)
 pdb_simulate_models_allparams(behdata, params);
 % fit the choice-based selective gain model on data with distance-matched consistent and inconsistent trial distributions, and generate Figures S2E.
 pdb_DistanceMatched_ModelBased_Perceptual(behdata, isplot)
+% fit theresidual shift model on data, and generate Figures S2F.
+pdb_Perceptual_ExtendedChoiceSelectiveModel(behdata, params.choice_selective);
