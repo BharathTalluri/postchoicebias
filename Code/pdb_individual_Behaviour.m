@@ -21,8 +21,9 @@ for sj = subjects
     % get the indices for Choice trials
     estimtrls = find((dat.condition == 1 & abs(dat.binchoice) == 1));
     % Psychometric function, we define the psychometric function below
-    logisticFit = fitcumnormal((dat.x1), dat.binchoice>0);
-    Noise(sj)   = logisticFit(2);
+    [bias, slope] = fitcumnormal((dat.x1), dat.binchoice>0);
+    logisticFit   = [bias, slope];
+    Noise(sj)   = slope;
     dat2 = dat.binchoice;
     dat2(dat2<0) = 0;
     logisticPoints = splitapply(@nanmean, dat2, findgroups(dat.x1));
@@ -40,7 +41,7 @@ for sj = subjects
         plot(x, cumnormal(logisticFit, x), '-', 'color', [0 0 0],'MarkerSize',3);
         set(gca, 'XLim', [-20 20], 'XTick', -20:10:20, 'ylim',[0 1], 'ytick', 0.0:0.5:1.0);
         xlabel('Direction in Interval 1'); ylabel('Proportion CW choices');
-        title(sprintf('Noise = %1.2f', slope));
+        title(sprintf('Noise = %1.2f', Noise(sj)));
         axis square;
         
         % Estimations as a function of mean evidence
@@ -51,7 +52,7 @@ for sj = subjects
         set(gca, 'XLim', [-20 20], 'XTick', -20:20:20, 'ylim',[-20 20], 'ytick', -20:20:20);
         ylabel('Estimation  (degrees)');
         xlabel('Mean Direction across interval 1&2  (degrees)');
-        title(sprintf('Beta = %1.2f', beta));
+        title(sprintf('Beta = %1.2f', Beta(sj)));
         axis square;EquateAxis;
     end
 end
@@ -66,7 +67,6 @@ plot([0.3 0.3], [0 1.5], 'k', 'LineWidth', 0.25);
 set(gca, 'YLim', [0.5 1.5], 'XLim', [0 1.2], 'YTick', 1.0, 'YTickLabel', {'Beta'}, 'XTick', 0:0.3:1.2, 'XTickLabel', 0:0.3:1.2);
 xlabel('Beta');
 title('Slope of best fitting line');
-offsetAxes;
 end
 
 %% Functions used above

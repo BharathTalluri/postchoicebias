@@ -2,13 +2,14 @@ function ga = pdb_Behaviour(task, isplot)
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code reproduces
 % figure 1B, C of the paper.
-close all;
 clc; dbstop if error;
 global behdatapath;global subjects;
 % specify the color map and figure properties
-cols = linspecer(9, 'qualitative');
-myfigureprops;
-figure;
+if isplot
+    cols = linspecer(9, 'qualitative');
+    myfigureprops;
+    figure;
+end
 behdata = readtable(sprintf('%s/Task_%s.csv', behdatapath, task));
 % initialise some variables
 if strcmp(task, 'Perceptual')
@@ -37,9 +38,9 @@ for sj = subjects
         % Estimations
         dat = dat(estimtrls,:);
         estimations(find(sj==subjects), :) = splitapply(@nanmedian, dat.estim, findgroups(dat.xavg));
-    elseif strcmp(task, 'Cognitive')
+    elseif strcmp(task, 'Numerical')
         % we are only interested in the psychometric function fits for the
-        % cognitive task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228.
+        % Numerical task. For other behavioural measures, refer to Bronfman et al., (2015) Proc. R. Soc. B Biol. Sci. 282, 20150228.
         choicetrls      = find(abs(dat.condition) == 1);
         dat.x1_relative(dat.x1_relative < 0 & dat.x1_relative >= -2) = -1;
         dat.x1_relative(dat.x1_relative < -2 & dat.x1_relative >= -4) = -2;
@@ -60,11 +61,10 @@ if isplot
     subplot(4,4,1); hold on;
     plot([0 0],[0 1],'-','color',cols(8,:),'LineWidth',1);
     errbar([-20 -10 0 10 20], mean(logisticPoints),std(logisticPoints) ./ sqrt(length(subjects)),'k-','LineWidth',1);
-    plot(x, cumnormal(mean(ga.logisticFit(subjectidx, :)), x), '-', 'color', [0 0 0],'MarkerSize',5);
+    plot(x, cumnormal(median(ga.logisticFit(subjectidx, :)), x), '-', 'color', [0 0 0],'MarkerSize',5);
     set(gca, 'XLim', [-20 20], 'XTick', -20:10:20, 'ylim',[0 1], 'ytick', 0.0:0.5:1.0);
     xlabel('Direction in interval 1 (degrees)'); ylabel('Proportion CW choices');
     axis square;
-    offsetAxes;
     
     % Estimations as a function of mean evidence
     subplot(4,4,5); hold on;
@@ -75,7 +75,6 @@ if isplot
     ylabel('Estimation (degrees)');
     xlabel('Mean Direction across interval 1&2  (degrees)');
     axis square;EquateAxis;
-    offsetAxes;
     
     % Histogram of mean evidence
     subplot(4,4,9);hold on;
@@ -86,7 +85,6 @@ if isplot
     xlabel('Mean Evidence (degrees)');
     axis square;
     set(gca, 'XLim', [-25 25], 'XTick', -20:20:20,'YLim',[0 2000],'YTick',0:1000:2000);
-    offsetAxes;
 end
 end
 

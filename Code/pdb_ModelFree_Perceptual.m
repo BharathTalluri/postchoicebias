@@ -23,11 +23,11 @@ for sj = subjects
     end
 end
 if isplot
-plot_roc(roc_index);
+    plot_roc(roc_index, bootstrap);
 end
 end
 
-function plot_roc(roc_index)
+function plot_roc(roc_index, bootstrap)
 % specify the color map and figure properties
 cols = linspecer(10, 'qualitative');
 colormap(linspecer);
@@ -55,6 +55,5 @@ plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+na
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
 xlabel({'Sensitivity for subsequent', 'inconsistent stimulus'});
 ylabel({'Sensitivity for subsequent', 'consistent stimulus'});
-offsetAxes;
 title({'Figure 2F',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
 end

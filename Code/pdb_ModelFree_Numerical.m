@@ -1,27 +1,24 @@
-function roc_index = pdb_ModelFree_Cognitive()
+function roc_index = pdb_ModelFree_Numerical(behdata, isplot)
 % Bharath Talluri & Anne Urai
 % code accompanying the post-decision bias paper. This code calculates model free ROC indices
 % and reproduces figure 3C of the paper.
 % close all;
-clc; dbstop if error;
-% specify the path to the data
-behdatapath = '../Data';
-behdata = readtable(sprintf('%s/Task_Cognitive.csv', behdatapath));
-% initialise some variables
-subjects = unique(behdata.subj)';
+global subjects;
 for sj = subjects
     dat             =  behdata(find(behdata.subj == sj),:);
     % use only choice trials in this paper
     trls2use = find(dat.condition == 1 & abs(dat.binchoice) == 1);
     dat = dat(trls2use,:);
     % get the roc indeces for consistent and inconsistent trials
-    roc_index.consistent.actual(sj) = runchoiceselectivegain(dat, 1);
-    roc_index.inconsistent.actual(sj) = runchoiceselectivegain(dat, 0);
+    roc_index.consistent.actual(sj) = roc_choiceselectivegain(dat, 1);
+    roc_index.inconsistent.actual(sj) = roc_choiceselectivegain(dat, 0);
 end
-plot_roc(roc_index);
+if isplot
+    plot_roc(roc_index);
+end
 end
 
-function roc = runchoiceselectivegain(dat, consistent)
+function roc = roc_choiceselectivegain(dat, consistent)
 % get the roc indices for choice based selective gain mechanism
 dat.idx = transpose(1:height(dat));
 % since consistency cannot be defined for trials where x2 = 0, remove those
@@ -77,7 +74,7 @@ cols = gray(25);
 cols = cols(4:24,:);
 myfigureprops;
 figure;
-subplot(5,5,1); hold on;
+subplot(4,4,1); hold on;
 dat1 = roc_index.inconsistent.actual;
 dat2 = roc_index.consistent.actual;
 % polish the figure
@@ -93,6 +90,5 @@ plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+na
 [pval] = permtest(dat1, dat2, 0, 100000); % permutation test
 xlabel({'ROC-index for subsequent', 'inconsistent information'});
 ylabel({'Roc-index for subsequent', 'consistent information'});
-offsetAxes;
-title({'Model-free results',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
+title({'Figure 3C',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
 end

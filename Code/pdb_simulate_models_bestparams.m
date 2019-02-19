@@ -211,7 +211,6 @@ plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nan
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', [0, 0, 0],'LineWidth',2);
 % polish the figure
 [pval_simul] = permtest(dat1, dat2, 0, 100000); % permutation test
-offsetAxes;
 title({'Choice-based Selective Gain model', sprintf('Consistent vs. Inconsistent: p = %.3f', pval_simul)});
 
 % correlated noise model
@@ -233,7 +232,6 @@ plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nan
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', [0, 0, 0],'LineWidth',2);
 % polish the figure
 [pval_simul] = permtest(dat1, dat2, 0, 100000); % permutation test
-offsetAxes;
 title({'Correlated Noise model', sprintf('Consistent vs. Inconsistent: p = %.3f', pval_simul)});
 
 % shift model
@@ -255,7 +253,6 @@ plot([nanmean(dat1)-nansem(dat1) nanmean(dat1)+nansem(dat1)], [nanmean(dat2) nan
 plot([nanmean(dat1) nanmean(dat1)], [nanmean(dat2)-nansem(dat2) nanmean(dat2)+nansem(dat2)], 'Color', [0, 0, 0],'LineWidth',2);
 % polish the figure
 [pval_simul] = permtest(dat1, dat2, 0, 100000); % permutation test
-offsetAxes;
 title({'Shift model', sprintf('Consistent vs. Inconsistent: p = %.3f', pval_simul)});
 
 suplabel('ROC-index for subsequent inconsistent stimulus', 'x');

@@ -10,10 +10,12 @@ myfigureprops;
 % specify the path to the data
 global behdatapath; global subjects;global psycho_fits;
 behdatapath = '../Data';
+toolpath = 'Tools/';
+addpath(genpath(sprintf('%s', toolpath)));
 
 %% PERCEPTUAL TASK %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath, task));
+behdata = readtable(sprintf('%s/Task_Perceptual.csv', behdatapath));
 % plot individual behavioural data for all subjects, and identify the
 % outliers. Reproduce Figure S1A, B.
 pdb_individual_Behaviour(behdata, 1);
@@ -63,3 +65,29 @@ pdb_simulate_models_allparams(behdata, params);
 pdb_DistanceMatched_ModelBased_Perceptual(behdata, isplot)
 % fit theresidual shift model on data, and generate Figures S2F.
 pdb_Perceptual_ExtendedChoiceSelectiveModel(behdata, params.choice_selective);
+
+%% NUMERICAL TASK %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% We do similar analysis on the data from numerical integration task from
+% Bronfman et al. 2015.
+behdata = readtable(sprintf('%s/Task_Numerical.csv', behdatapath));
+subjects = unique(behdata.subj)';
+isplot = 0;
+% obtain the behavioural measures
+psycho_fits = pdb_Behaviour('Numerical', isplot);
+isplot = 1;
+% Choice-based selective gain model
+% get model-based measures and generate Figures 3B, S3A-D.
+[params.choice_selective, ~] = pdb_Numerical_ChoiceSelectiveModel(behdata, 'all', isplot);
+% get model-free measures and generate Figure 3C
+roc_index.choice_selective = pdb_ModelFree_Numerical(behdata, isplot); 
+% get the measures of consistency to correlate, for Figure 3D
+consistency.modelbased.numerical = params.choice_selective(:,5) - params.choice_selective(:,6);
+consistency.modelfree.numerical = roc_index.choice_selective.consistent.actual - roc_index.choice_selective.inconsistent.actual;
+% correlation between the roc indices and weights; reproduce figure 3D
+pdb_ROC_vs_Weights(consistency)
+% finally, use a stratified model by matching the means of consistent and
+% inconsistent distributions, to show that the results hold in a fixed-effects subjects even without
+% the theta parameter
+pdb_Numerical_Stratified_ChoiceSelectiveModel(behdata)

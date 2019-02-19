@@ -58,76 +58,21 @@ options.Robust = 'on';
 startingpoint = starting_pt([1,3,5]);
 TrlsConsistent = find(sign(subj_dat.x1) == sign(subj_dat.x2));
 dat = subj_dat(TrlsConsistent,:);
-[individualparams_consistent, ~]=subplex('pdb_model', startingpoint);
+[individualparams_consistent, ~]=subplex('model_Perceptual_StimulusSelective', startingpoint);
 % optimise again, just to make sure we are at the minimum
-[Finalparams_consistent,FinalNlogL_consistent] = fminsearchbnd(@(individualparams) pdb_model(individualparams),individualparams_consistent,[0,-1000,-1000],[80,1000,1000],options);
+[Finalparams_consistent,FinalNlogL_consistent] = fminsearchbnd(@(individualparams) model_Perceptual_StimulusSelective(individualparams),individualparams_consistent,[0,-1000,-1000],[80,1000,1000],options);
 
 % now fit the inconsistent trials
 % define a random starting point for the fitting algorithm
 startingpoint = starting_pt([2,4,6]);
 TrlsInconsistent = find(sign(subj_dat.x1) ~= sign(subj_dat.x2));
 dat = subj_dat(TrlsInconsistent,:);
-[individualparams_inconsistent, ~] = subplex('pdb_model', startingpoint);
+[individualparams_inconsistent, ~] = subplex('model_Perceptual_StimulusSelective', startingpoint);
 % optimise again, just to make sure we are at the minimum
-[Finalparams_inconsistent,FinalNlogL_inconsistent] = fminsearchbnd(@(individualparams) pdb_model(individualparams),individualparams_inconsistent,[0,-1000,-1000],[80,1000,1000],options);
+[Finalparams_inconsistent,FinalNlogL_inconsistent] = fminsearchbnd(@(individualparams) model_Perceptual_StimulusSelective(individualparams),individualparams_inconsistent,[0,-1000,-1000],[80,1000,1000],options);
 subj_params([1,3,5]) = Finalparams_consistent;
 subj_params([2,4,6]) = Finalparams_inconsistent;
 subj_NlogL = FinalNlogL_consistent + FinalNlogL_inconsistent;
-end
-
-function optimal_funcval = pdb_model(individualparams)
-global dat;global psycho_noise; global psycho_bias;
-% get the relevant values first
-X1 = dat.x1;
-X2 = dat.x2;
-RealDecision = dat.binchoice;
-RealEvaluation = dat.estim;
-num_trls = length(X1);
-LEvaluation = NaN(num_trls,1);
-step = 0.05;
-X = -180:step:180; % the range of values over which we calculate the pdf
-for i = 1:num_trls
-    % get the pdf for the first interval
-    Y1cc = normpdf(X, (X1(i) + psycho_bias)*individualparams(2), psycho_noise*abs(individualparams(2)));
-    % set the pdf of the unchosen side to zero, assuming subjects base
-    % their estimations only on the chosen side
-    Y1cc(sign(X) ~= sign(RealDecision(i))) = 0;
-    % we need the pdf, so normalise the resulting distribution such that
-    % the area under the curve is 1
-    Y1cc = Y1cc./trapz(X,Y1cc);
-    % get the pdf of the second interval
-    Y2cc = normpdf(X, (X2(i) + psycho_bias)*individualparams(3), psycho_noise*abs(individualparams(3)));
-    % convolve the two pdfs corresponding to the two inervals respectively-
-    % this is similar to adding two random variables drawn from the
-    % distributions
-    N1 = conv(Y1cc,Y2cc,'same');
-    % we need the pdf, so normalise the resulting distribution such that
-    % the area under the curve is 1
-    N1=N1./trapz(X,N1);
-    % get a zero mean Normal distribution that represents the estimation
-    % noise
-    NoiseDist = normpdf(X,0,individualparams(1));
-    % add this noise to the estimations from the two intervals
-    NN1 = conv(N1,NoiseDist,'same');
-    % we need the pdf, so normalise the resulting distribution such that
-    % the area under the curve is 1; this will be the final pdf
-    % corresponding to the estimations of this trial
-    NN1 = NN1./trapz(X,NN1);
-    % get the likelihood of the subject's estimation from the pdf obtained
-    % above
-    LEvaluation(i) = interp1(X,NN1,RealEvaluation(i));
-end
-% total log likelihood, one value for each trial
-PlogObservation = sum(log(LEvaluation));
-% allow for nan and inf in the loglikelihood function, but set their probability to be super small
-if isinf(abs(PlogObservation))
-    PlogObservation = -10e100;
-end
-if isnan(PlogObservation)
-    PlogObservation = -10e100;
-end
-% take the negative ll for fminsearch!
-optimal_funcval = -PlogObservation;
 end
 
 function plot_params(boot_params, anov)
@@ -152,7 +97,6 @@ EquateAxis;
 axis square;
 xlabel({'Weight for subsequent', 'inconsistent stimulus'});
 ylabel({'Weight for subsequent', 'consistent stimulus'});
-offsetAxes;
 title({'Model-based results',sprintf('Consistent vs. Inconsistent: p = %.4f', pval)});
 
 subplot(4,4,3); hold on;
@@ -162,7 +106,7 @@ errbar([1 2], nanmean([boot_params(:, 3) boot_params(:, 5)], 1), nanstd([boot_pa
 errbar([1 2], nanmean([boot_params(:, 4) boot_params(:, 6)], 1), nanstd([boot_params(:, 4) boot_params(:, 6)], 1) ./ sqrt(length(boot_params(:, 4))), '-','Color', [0.6 0.6 0.6], 'LineWidth',1);
 set(gca, 'XLim', [0.5 2.5], 'XTick', 1:2, 'XTickLabel', {'Stimulus 1', 'Stimulus 2'},  'ylim',[0 0.6], 'ytick', 0:0.3:0.6);
 ylabel('Weights');
-axis square;offsetAxes;
+axis square;
 [pval] = permtest(boot_params(:, 3), boot_params(:, 5), 0, 100000); % ranksum much faster than permtest
 mysigstar([1, 2], 0.4, pval, 0);
 [pval] = permtest(boot_params(:, 4), boot_params(:, 6), 0, 100000); % ranksum much faster than permtest
@@ -190,6 +134,5 @@ EquateAxis;
 axis square;
 xlabel({'Estimation noise', 'for Inconsistent trials'});
 ylabel({'Estimation noise', 'for Consistent trials'});
-offsetAxes;
 title(sprintf('Consistent vs. Inconsistent: p = %.4f', pval));
 end
